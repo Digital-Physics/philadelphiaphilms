@@ -115,3 +115,5 @@ magenta, a cool near-black. Type is Archivo for display and Space Mono for label
 The gallery is laid out like a contact sheet with sprocket-hole rails down the
 sides, and each tile carries its category tag, which doubles as the filter. All
 styling is in `src/index.css`.
+
+##
