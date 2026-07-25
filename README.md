@@ -1,147 +1,117 @@
-# Philadelphia Philms
+# Philadelphia Philms (AI porting instructions)
 
-A static React port of the Squarespace site at philadelphiaphilms.com. Vite + React
-Router, no backend, deploys to Cloudflare Pages.
+A small static site for philadelphiaphilms.com — a single-page gallery of films,
+videos, code, and design work. Built with Vite and React, no backend, deployed to
+Cloudflare Pages.
 
-## Run it
+## Run it locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Deploy to Cloudflare Pages
-
-Easiest path is the Git integration: push this repo, then in the Cloudflare
-dashboard create a Pages project with **build command** `npm run build` and
-**output directory** `dist`. Every push deploys.
-
-Or from the terminal:
-
-```bash
-npx wrangler login
-npm run deploy          # build + wrangler pages deploy dist
-```
-
-`public/_redirects` contains the SPA fallback (`/* /index.html 200`) so that
-`/about`, `/contact`, and `/video-game` resolve on a hard refresh. Without it
-those URLs 404 — Cloudflare serves static files and doesn't know about the
-client-side router.
-
-When you're ready to cut over, add `philadelphiaphilms.com` as a custom domain
-on the Pages project and point the nameservers at Cloudflare. Keep the
-Squarespace site up until the DNS has propagated.
+Vite serves it at `http://localhost:5173`.
 
 ## What's here
 
-| Page | Route |
-| --- | --- |
-| Portfolio (23 works, filterable by medium) | `/` |
-| Video game | `/video-game` |
-| About | `/about` |
-| Contact | `/contact` |
+One page at `/`: a 23-item gallery, filterable by category (animation, film &
+video, video games, commercials, code, design). Each tile links straight out to
+the work — Vimeo, YouTube, itch.io, GitHub, or the live site. The contact email
+is in the footer. Any unknown URL falls through to a simple 404.
 
-All content lives in two files:
-
-- `src/data/works.js` — the 23 portfolio items
-- `src/data/site.js` — about copy, contact details, nav
-
-## Two things to finish
-
-### 1. Filling in the missing links
-
-Seven items have real URLs already. The rest — the music videos and film pieces —
-have `href: ''` with a `// TODO` next to them, because Squarespace renders those
-clickthrough links in JavaScript and they aren't in the served HTML.
-
-Fastest way to get them, while the Squarespace site is still up:
-
-```bash
-npm run import
+```
+index.html            # entry point
+src/
+  main.jsx            # mounts React
+  App.jsx             # routes: "/" and a catch-all 404
+  pages/
+    Portfolio.jsx     # the gallery (the whole site, really)
+    NotFound.jsx
+  components/         # Masthead, Footer, Frame (one gallery tile)
+  data/
+    works.js          # the 23 items + categories  <- edit content here
+    site.js           # name, tagline, contact email
+  index.css           # all styling + design tokens
+public/
+  img/                # the 23 thumbnails (committed, served locally)
+  favicon.*           # favicons
+  _redirects          # SPA fallback for Cloudflare
 ```
 
-That hits `https://www.philadelphiaphilms.com/?format=json` and prints each
-gallery item's title alongside its `clickthroughUrl`. Paste the URLs into
-`works.js`.
+## Editing content
 
-If that endpoint is disabled, open the live site in a browser and paste this into
-the dev-tools console:
+Everything lives in `src/data/works.js`. Each item looks like:
 
 ```js
-copy(
-  [...document.querySelectorAll('.gallery-item, .slide, [data-slide-url]')]
-    .map((el) => {
-      const img = el.querySelector('img');
-      const a = el.querySelector('a[href]');
-      return { title: img?.alt || '', href: a?.href || el.dataset.slideUrl || '' };
-    })
-    .filter((r) => r.title)
-);
+{
+  id: 'yellowstone',
+  title: 'Yellowstone',
+  blurb: 'Super 8mm, Kodak 50D & 200T.',
+  medium: 'film & video',   // sets which filter it appears under
+  image: 'yellowstone.jpeg', // filename in public/img/
+  href: 'https://vimeo.com/1020379427',
+}
 ```
 
-It copies a JSON array of `{ title, href }` to your clipboard.
+To add a category, just use a new `medium` value and add it to the `MEDIA` array
+at the top of the file. To change a thumbnail, drop a new file in `public/img/`
+and point `image` at its filename. Site name, tagline, and the footer email are
+in `src/data/site.js`.
 
-Items with an empty `href` still render — they're just dimmed and not clickable —
-so the site works fine before you finish this.
+## Images
 
-### 2. Getting off the Squarespace CDN
-
-The thumbnails currently load from `images.squarespace-cdn.com`. Those URLs will
-die when you cancel the account.
-
-```bash
-npm run images
-```
-
-downloads all 23 into `public/img`. Then set `SELF_HOSTED_IMAGES = true` at the
-bottom of `src/data/works.js` and they'll be served from your own origin.
+The thumbnails are self-hosted in `public/img/`, named to match each item's `id`
+(e.g. `pymeister.png`, `yellowstone.jpeg`). Nothing depends on Squarespace's CDN.
 
 ## Favicon
 
-The site ships with a favicon designed to match the rest of the page: a "PP"
-monogram in process magenta on the film-base green, framed with sprocket holes.
-It lives in `public/` as four files, all wired up in `index.html`:
+Made from the Philadelphia Philms wordmark, squeezed to a square so the whole
+wordmark stays in frame (the lettering runs edge to edge, so a crop would clip the
+**P** and **S**). It ships as `favicon.ico` (16/32/48), `favicon-32.png`, and a
+180×180 `apple-touch-icon.png`, all in `public/` and wired up in `index.html`.
 
-- `favicon.svg` — used by modern browsers, sharp at any size
-- `favicon.ico` — multi-size (16/32/48) fallback for older browsers
-- `favicon-32.png` — PNG fallback
-- `apple-touch-icon.png` — 180×180 for iOS home-screen bookmarks
+To regenerate from a source image:
 
-### Using your original Squarespace favicon instead
-
-Your old favicon is still on the live site. To grab it:
-
-1. Open philadelphiaphilms.com and view the page source (`view-source:` in the
-   address bar, or right-click → View Page Source). Search the `<head>` for
-   `icon` — you'll find a `<link rel="shortcut icon" href="https://images.squarespace-cdn.com/...">`.
-   Open that URL and save the image.
-2. Or, in Squarespace: **Design → Logo & Title** (older layouts:
-   **Website Tools → Browser Icon / Favicon**) has the uploaded icon with a
-   download option. This gives you the original source file.
-
-Then either drop your file into `public/` and update the `<link>` tags in
-`index.html` to point at it, or — simplest — regenerate the set from your image:
-
-```bash
-# from a single square PNG (512×512 is ideal)
-npx sharp-cli resize 32 32 --input your-icon.png --output public/favicon-32.png
-npx sharp-cli resize 180 180 --input your-icon.png --output public/apple-touch-icon.png
+```python
+from PIL import Image, ImageFilter
+im = Image.open('favicon.webp').convert('RGB')
+def make(size):
+    c = im.resize((size, size), Image.LANCZOS)
+    return c.filter(ImageFilter.UnsharpMask(0.5, 80, 0)) if size <= 48 else c
+make(32).save('public/favicon-32.png')
+make(180).save('public/apple-touch-icon.png')
+for n in (16, 32, 48): make(n).save(f'/tmp/i{n}.png')
+# then: convert /tmp/i16.png /tmp/i32.png /tmp/i48.png public/favicon.ico
 ```
 
-For the `.ico`, any online "PNG to ICO" converter works, or ImageMagick:
-`convert your-icon.png -define icon:auto-resize=48,32,16 public/favicon.ico`.
-If you go with a raster original, delete the `favicon.svg` link line from
-`index.html` so browsers don't prefer the old vector mark over your image.
+## Deploy (Cloudflare Pages via GitHub)
+
+Push the repo to GitHub, then in the Cloudflare dashboard go to **Workers &
+Pages → Create application → Pages → Import an existing Git repository**, pick the
+repo, and set:
+
+- **Build command:** `npm run build`
+- **Build output directory:** `dist`
+
+Save and deploy. You'll get a `*.pages.dev` URL, and every push to the main branch
+rebuilds and redeploys automatically.
+
+`public/_redirects` (`/* /index.html 200`) is copied into `dist/` at build time
+and tells Cloudflare to serve `index.html` for every route, so client-side routing
+and hard refreshes work.
+
+To use the real domain, add `philadelphiaphilms.com` under the project's **Custom
+domains** tab and move the domain's DNS to Cloudflare. Keep the Squarespace site
+live until DNS propagates so there's no downtime.
+
+(There's also a `deploy` script using Wrangler for command-line deploys, but with
+the GitHub integration above you don't need it.)
 
 ## Design notes
 
-The palette is taken from colour negative film — pale film-base green, process
-magenta, and a cool near-black for the rebate edge. Type is Archivo (display) and
-Space Mono (labels and metadata). The portfolio grid is laid out as a contact
-sheet with sprocket-hole rails down either side, which is why the medium tag
-(`film` / `video` / `web` / `game`) sits on every frame: given how much of the
-work is actually shot on Super 8 and 16mm, the gauge is information, not
-decoration.
-
-Nothing about the visual direction is load-bearing. If you want the old
-Squarespace look back, `src/index.css` is the only file to touch.
+The palette comes from colour negative film — pale film-base green, process
+magenta, a cool near-black. Type is Archivo for display and Space Mono for labels.
+The gallery is laid out like a contact sheet with sprocket-hole rails down the
+sides, and each tile carries its category tag, which doubles as the filter. All
+styling is in `src/index.css`.
